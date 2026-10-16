@@ -25,6 +25,10 @@ data class CameraModel(
     // power-button press, and their media API is NOT the camera datalink (see DroneSession, and
     // MEDIA_PROTOCOL.md § "DJI Drone QuickTransfer media offload").
     val isDrone: Boolean = false,
+    // djictl's DeviceType where it changes the RTMP livestream frames (pkg/duml/device_type.go):
+    // the Action 4 and Action 5 Pro alone get a SetImageStabilization step, and the 5 Pro uses a
+    // different device byte in the stream configuration. [DJI_TYPE_NONE] = the shared default layout.
+    val djiStreamType: Int = DJI_TYPE_NONE,
 ) {
     /** The SetPairingPIN token this device expects: a drone only releases WiFi creds to "DJI FLY". */
     val pairingToken: String get() = if (isDrone) "DJI FLY" else "osmo"
@@ -43,6 +47,11 @@ data class CameraModel(
         const val ID_MAVIC_3 = 0x0070  // drone (confirmed on hardware, mfr 7000…)
         const val ID_NEO_2 = 0x007e    // drone (tester scan, mfr 7e00…)
 
+        /** [djiStreamType] for any model whose RTMP frames are djictl's default layout. */
+        const val DJI_TYPE_NONE = 0
+        const val DJI_TYPE_ACTION4 = 4
+        const val DJI_TYPE_ACTION5_PRO = 5
+
         private val BY_ID: Map<Int, CameraModel> = mapOf(
             0x0010 to CameraModel("Osmo Action 2"),
             0x0012 to CameraModel("Osmo Action 3"),
@@ -50,10 +59,10 @@ data class CameraModel(
             // Thanks to Ave for sending over the golden test files. All verified against the actual hardware.
             // Everything seems to work as expected.
             // PR: https://github.com/KonradIT/osmosis/pull/37
-            0x0014 to CameraModel("Osmo Action 4", verified = true),
+            0x0014 to CameraModel("Osmo Action 4", verified = true, djiStreamType = DJI_TYPE_ACTION4),
             // Genuine Action 5 Pro on 9004 — tester-confirmed (grid + download). The Xtra rebrand
             // gets flipped to 10004 by resolve(); see the Xtra note below.
-            0x0015 to CameraModel("Osmo Action 5 Pro", verified = true),
+            0x0015 to CameraModel("Osmo Action 5 Pro", verified = true, djiStreamType = DJI_TYPE_ACTION5_PRO),
             // 360 stays unverified: only ever scanned, never a successful offload — and its files are
             // 360-format (need Mimo to view), so it's parked regardless of transport.
             0x0017 to CameraModel("Osmo 360", wpa3 = true),

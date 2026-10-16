@@ -78,6 +78,26 @@
     <string name="filter_videos">Vídeos</string>
     <string name="filter_faved">Favoritos</string>
     <string name="select">Seleccionar</string>
+
+    <!-- RTMP livestream -->
+    <string name="rtmp_start">Emitir por RTMP</string>
+    <string name="rtmp_title">%1$s — Emisión por RTMP</string>
+    <string name="rtmp_url_hint">rtmp://server/app/stream-key</string>
+    <string name="rtmp_ssid_hint">Nombre de la red Wi-Fi</string>
+    <string name="rtmp_psk_hint">Contraseña Wi-Fi</string>
+    <string name="rtmp_resolution">Resolución</string>
+    <string name="rtmp_quality">Calidad (bitrate)</string>
+    <string name="rtmp_eis">Estabilización</string>
+    <string name="rtmp_eis_unsupported">No se envía en este modelo</string>
+    <string name="rtmp_start_button">Iniciar emisión</string>
+    <string name="rtmp_stop_button">Detener emisión</string>
+    <string name="rtmp_need_url">Introduce primero una URL RTMP</string>
+    <string name="rtmp_need_ssid">Introduce el nombre de la red Wi-Fi (SSID)</string>
+    <string name="rtmp_starting">Conectando con %1$s…</string>
+    <string name="rtmp_idle">Sin emisión.</string>
+    <string name="rtmp_bar_streaming">Emitiendo a %1$s</string>
+    <string name="rtmp_bar_battery">batería de la cámara %1$d%%</string>
+    <string name="rtmp_stop_first">Detén primero la emisión</string>
     <string name="download">Descargar</string>
     <string name="download_count">Descargar (%1$d)</string>
     <string name="download_running">Descargando…</string>

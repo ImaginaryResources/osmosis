@@ -22,12 +22,15 @@ import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
 import android.net.LinkProperties
 import android.net.Network
+import android.net.wifi.WifiManager
 import androidx.activity.OnBackPressedCallback
 import androidx.activity.enableEdgeToEdge
 import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
 import androidx.core.view.ViewCompat
 import androidx.core.view.WindowInsetsCompat
+import android.widget.ArrayAdapter
+import android.widget.Spinner
 import dev.konraditurbe.osmosis.R
 import dev.konraditurbe.osmosis.ble.Brand
 import dev.konraditurbe.osmosis.ble.CameraModel
@@ -40,6 +43,9 @@ import dev.konraditurbe.osmosis.core.FileLog
 import dev.konraditurbe.osmosis.core.SavedCameras
 import dev.konraditurbe.osmosis.core.TrimRange
 import dev.konraditurbe.osmosis.duml.DjiMessage
+import dev.konraditurbe.osmosis.duml.DjiPairMessagePayload
+import dev.konraditurbe.osmosis.duml.OsmoCommands
+import dev.konraditurbe.osmosis.stream.RtmpStreamer
 import dev.konraditurbe.osmosis.net.ApJoiner
 import dev.konraditurbe.osmosis.net.HttpClient
 import dev.konraditurbe.osmosis.camera.CameraSession
@@ -85,6 +91,10 @@ class MainActivity : AppCompatActivity(), OsmoScanner.Listener, GattClient.Liste
     private lateinit var statusPill: StatusPillView
     private lateinit var btnGps: MaterialButton
     private lateinit var gpsBanner: TextView
+    private lateinit var rtmpBar: View
+    private lateinit var rtmpBarText: TextView
+    private lateinit var rtmpBarBattery: TextView
+    private lateinit var btnRtmpStartStop: MaterialButton
     private var pendingGpsTarget: Pair<String, String>? = null // (mac, name) awaiting location perms
 
     // GPS-sync lockout: while the R-SDK link owns the camera's BLE, media browsing must be blocked
@@ -321,6 +331,16 @@ class MainActivity : AppCompatActivity(), OsmoScanner.Listener, GattClient.Liste
         cameraList.setOnItemLongClickListener { _, _, pos, _ -> onCamRowLongClick(pos) }
         findViewById<View>(R.id.fabDownload).setOnClickListener { onDownloadClicked() }
         findViewById<View>(R.id.fabDelete).setOnClickListener { onBulkDeleteClicked() }
+        rtmpBar = findViewById(R.id.rtmpBar)
+        rtmpBarText = findViewById(R.id.rtmpBarText)
+        rtmpBarBattery = findViewById(R.id.rtmpBarBattery)
+        btnRtmpStartStop = findViewById(R.id.btnRtmpStartStop)
+        btnRtmpStartStop.setOnClickListener {
+            if (rtmpStreaming) rtmp?.stop() else startRtmpFromSaved()
+        }
+        // Visible from the first launch if a stream was ever configured, so it can be restarted from
+        // the camera list without digging the form back up.
+        renderRtmpBar()
         wireGalleryChips()
         // "Save logs" button (checkable, same outlined pill as GPS Sync) → persist all log lines to a
         // rotating .log file in external files dir.
@@ -446,6 +466,7 @@ class MainActivity : AppCompatActivity(), OsmoScanner.Listener, GattClient.Liste
         // line is flushed, so nothing is lost if the process dies; the toggle closes it explicitly.
         stopKeepalive()
         datalink?.close()
+        rtmp?.stop()
         scanner?.stop()
         gattClient?.disconnect()
         gattClient?.close()
@@ -623,6 +644,12 @@ class MainActivity : AppCompatActivity(), OsmoScanner.Listener, GattClient.Liste
             toast(getString(R.string.gps_active_select_blocked))
             return
         }
+        // Same link, same problem: an RTMP session owns the BLE GATT, and the camera is on the home
+        // network by then, so its AP isn't even reachable. Stop the stream first.
+        if (rtmpBusy || rtmpStreaming) {
+            toast(getString(R.string.rtmp_stop_first))
+            return
+        }
         val r = camRows.getOrNull(pos) ?: return
         // 🛰️ GPS-sync mode: connect over R-SDK (BLE only, no WiFi) via the foreground service.
         if (btnGps.isChecked) {
@@ -647,8 +674,10 @@ class MainActivity : AppCompatActivity(), OsmoScanner.Listener, GattClient.Liste
         }
         logLine("GPS sync: connecting R-SDK to $name ($mac)")
         // Cross-flow interlock: free the BLE GATT from any offload session first, so the R-SDK link
-        // owns it exclusively. Running both at once is what caused the field disconnections.
+        // owns it exclusively. Running both at once is what caused the field disconnections. An RTMP
+        // stream holds the same link, so it stops too — the camera is on the home network by then.
         teardownOffload()
+        rtmp?.stop()
         GpsService.start(this, mac, name)
         Toast.makeText(this, getString(R.string.gps_sync_starting, name), Toast.LENGTH_LONG).show()
     }
@@ -680,22 +709,295 @@ class MainActivity : AppCompatActivity(), OsmoScanner.Listener, GattClient.Liste
 
     private fun onCamRowLongClick(pos: Int): Boolean {
         val r = camRows.getOrNull(pos) ?: return false
-        if (!r.saved) return false
+        // Anything the camera can act on goes here. RTMP only needs the camera in range (it pairs and
+        // joins the home network itself), while forgetting a camera only means anything once saved.
+        val actions = mutableListOf<Pair<String, () -> Unit>>()
+        // An RTMP stream takes the same BLE link the R-SDK GPS session holds, so the two can't coexist.
+        if (r.device != null && !GpsSyncState.locked) actions += getString(R.string.rtmp_start) to { promptRtmp(r) }
+        if (r.saved) {
+            actions += getString(R.string.reenter_wifi_password) to {
+                promptPasswordFor(r.mac) { logLine("Password updated.") }
+            }
+            actions += getString(R.string.forget_camera) to { forgetCamera(r) }
+        }
+        if (actions.isEmpty()) return false
         AlertDialog.Builder(this)
             .setTitle("${r.model.name}  (${r.name ?: r.mac})")
-            .setItems(arrayOf(getString(R.string.reenter_wifi_password), getString(R.string.forget_camera))) { _, i ->
-                when (i) {
-                    0 -> promptPasswordFor(r.mac) { logLine("Password updated.") }
-                    1 -> {
-                        savedCameras.remove(r.mac)
-                        getSharedPreferences("osmosis", MODE_PRIVATE).edit().remove("pass_${r.mac}").apply()
-                        logLine("Forgot ${r.name ?: r.mac}")
-                        rebuildCameraList()
-                        CameraShortcuts.refresh(this)   // drop it from the launcher shortcuts too
+            .setItems(actions.map { it.first }.toTypedArray()) { _, i -> actions[i].second() }
+            .show()
+        return true
+    }
+
+    private fun forgetCamera(r: CamRow) {
+        savedCameras.remove(r.mac)
+        getSharedPreferences("osmosis", MODE_PRIVATE).edit().remove("pass_${r.mac}").apply()
+        logLine("Forgot ${r.name ?: r.mac}")
+        rebuildCameraList()
+        CameraShortcuts.refresh(this)   // drop it from the launcher shortcuts too
+    }
+
+    // ---- RTMP livestream ----------------------------------------------------------------------
+
+    /** Live RTMP session, if any. One at a time: it owns the camera's BLE link while it runs. */
+    private var rtmp: RtmpStreamer? = null
+
+    /**
+     * Mimo's "Streaming Quality" is a bitrate preset — djictl exposes no quality enum, and these are
+     * the DJI app's own ballpark values.
+     */
+    private val rtmpQualities = linkedMapOf(
+        "Smooth — 2500 kbps" to 2500,
+        "HD — 4000 kbps" to 4000,
+        "High — 6000 kbps" to 6000,
+        "Max — 10000 kbps" to 10000,
+    )
+
+    /** The phone's current SSID, to save typing. Blank when we can't read it (no location permission). */
+    @Suppress("DEPRECATION") // connectionInfo still answers on every API we ship to; the replacement
+    private fun currentSsid(): String = try { // needs a NetworkCallback we have no use for here.
+        getSystemService(WifiManager::class.java)?.connectionInfo?.ssid
+            ?.removeSurrounding("\"")?.takeIf { it != "<unknown ssid>" }.orEmpty()
+    } catch (_: SecurityException) {
+        ""
+    }
+
+    /**
+     * The RTMP form: network, URL, resolution, bitrate and stabilization. The camera joins our home
+     * network here, so this must not run while an offload session is live — [startRtmp] tears it down.
+     *
+     * The form only *edits* the saved settings; everything it writes goes to prefs and [startRtmp]
+     * reads them back, so the bar can restart the same stream later without the dialog.
+     */
+    private fun promptRtmp(r: CamRow) {
+        // Non-null by construction: the long-press menu only offers this for a row with a live device.
+        val dev = r.device ?: return
+        val prefs = getSharedPreferences("osmosis", MODE_PRIVATE)
+        val view = layoutInflater.inflate(R.layout.dialog_rtmp, null)
+        val url = view.findViewById<EditText>(R.id.rtmpUrl)
+        val ssid = view.findViewById<EditText>(R.id.rtmpSsid)
+        val psk = view.findViewById<EditText>(R.id.rtmpPsk)
+        val resSpin = view.findViewById<Spinner>(R.id.rtmpResolution)
+        val qualSpin = view.findViewById<Spinner>(R.id.rtmpQuality)
+        val eisSpin = view.findViewById<Spinner>(R.id.rtmpEis)
+
+        url.setText(prefs.getString("rtmp_url", ""))
+        ssid.setText(prefs.getString("rtmp_ssid", currentSsid()))
+        psk.setText(prefs.getString("rtmp_psk", ""))
+
+        // Resolution / quality / EIS labels come from the protocol tables, so the dialog can't drift
+        // from the bytes on the wire.
+        val resolutions = OsmoCommands.STREAM_RESOLUTIONS.keys.toList()
+        val qualities = rtmpQualities.keys.toList()
+        resSpin.adapter = ArrayAdapter(this, android.R.layout.simple_spinner_dropdown_item, resolutions)
+        qualSpin.adapter = ArrayAdapter(this, android.R.layout.simple_spinner_dropdown_item, qualities)
+        val savedRes = prefs.getString("rtmp_res", DEFAULT_STREAM_RESOLUTION)
+        val savedQuality = prefs.getString("rtmp_quality", DEFAULT_STREAM_QUALITY)
+        resSpin.setSelection(resolutions.indexOf(savedRes).coerceAtLeast(0))
+        qualSpin.setSelection(qualities.indexOf(savedQuality).coerceAtLeast(0))
+
+        // djictl only sends SetImageStabilization to an Action 4 / Action 5 Pro; on every other model
+        // the camera keeps its own setting, so the picker is inert rather than missing.
+        val eisChoices = OsmoCommands.STREAM_EIS.keys.toList()
+        eisSpin.adapter = ArrayAdapter(this, android.R.layout.simple_spinner_dropdown_item, eisChoices)
+        eisSpin.setSelection(eisChoices.indexOf(prefs.getString("rtmp_eis", "Off")).coerceAtLeast(0))
+        if (r.model.djiStreamType == CameraModel.DJI_TYPE_NONE) {
+            eisSpin.isEnabled = false
+            view.findViewById<TextView>(R.id.rtmpEisLabel).text = getString(R.string.rtmp_eis_unsupported)
+        }
+
+        val dlg = AlertDialog.Builder(this)
+            .setTitle(getString(R.string.rtmp_title, r.name ?: r.mac))
+            .setView(view)
+            .setPositiveButton(R.string.rtmp_start_button, null)
+            .setNegativeButton(R.string.cancel, null)
+            .create()
+        rtmpDialog = dlg
+        val act = {
+            // Already streaming: this button ends it, exactly like the bar's.
+            if (rtmpStreaming) {
+                rtmp?.stop()
+            } else {
+                val u = url.text.toString().trim()
+                val s = ssid.text.toString().trim()
+                when {
+                    u.isEmpty() -> toast(getString(R.string.rtmp_need_url))
+                    s.isEmpty() -> toast(getString(R.string.rtmp_need_ssid))
+                    else -> {
+                        prefs.edit()
+                            .putString("rtmp_url", u)
+                            .putString("rtmp_ssid", s)
+                            .putString("rtmp_psk", psk.text.toString())
+                            .putString("rtmp_res", resSpin.selectedItem.toString())
+                            .putString("rtmp_quality", qualSpin.selectedItem.toString())
+                            .putString("rtmp_eis", eisSpin.selectedItem.toString())
+                            .putString("rtmp_mac", r.mac)
+                            .apply()
+                        startRtmp(r, dev)
                     }
                 }
-            }.show()
-        return true
+            }
+        }
+        dlg.setOnShowListener {
+            dlg.getButton(AlertDialog.BUTTON_POSITIVE).setOnClickListener { act() }
+        }
+        dlg.setOnDismissListener { rtmpDialog = null }
+        dlg.show()
+        renderRtmpBar()
+    }
+
+    // ---- RTMP control bar ---------------------------------------------------------------------
+
+    /** View of the live RTMP session, or null once its dialog is dismissed. */
+    private var rtmpDialog: AlertDialog? = null
+
+    /** Last line shown in the bar and in an open dialog. */
+    private var rtmpNote = ""
+
+    private var rtmpBusy = false
+    private var rtmpStreaming = false
+    private var rtmpBattery = -1
+    private var rtmpHost = ""
+
+    /** The camera row the last stream used, so a restart does not depend on a scan seeing it. */
+    private var rtmpRow: CamRow? = null
+
+    /** Settings the bar restarts with; the dialog is only the editor. */
+    private fun rtmpPref(key: String, def: String) =
+        getSharedPreferences("osmosis", MODE_PRIVATE).getString(key, def).orEmpty()
+
+    private fun rtmpDialogStatus(): TextView? = rtmpDialog?.findViewById(R.id.rtmpStatus)
+
+    /**
+     * One renderer for both surfaces: the dialog while it is open, and the bar, which is the only
+     * control left once it is dismissed.
+     */
+    private fun renderRtmpBar(note: String? = null) {
+        note?.let { rtmpNote = it }
+        if (rtmpNote.isEmpty()) rtmpNote = getString(R.string.rtmp_idle)
+        val configured = rtmpPref("rtmp_url", "").isNotEmpty() && rtmpPref("rtmp_ssid", "").isNotEmpty()
+        if (!configured) rtmpBar.visibility = View.GONE else rtmpBar.visibility = View.VISIBLE
+        rtmpBarText.text = rtmpNote
+        rtmpBarBattery.text =
+            if (rtmpStreaming && rtmpBattery in 0..100) getString(R.string.rtmp_bar_battery, rtmpBattery)
+            else ""
+        btnRtmpStartStop.text = getString(
+            if (rtmpStreaming) R.string.rtmp_stop_button else R.string.rtmp_start_button
+        )
+        btnRtmpStartStop.isEnabled = !rtmpBusy
+        // The dialog is open right after a start, so its button has to read the same way.
+        rtmpDialog?.getButton(AlertDialog.BUTTON_POSITIVE)?.text =
+            getString(if (rtmpStreaming) R.string.rtmp_stop_button else R.string.rtmp_start_button)
+        rtmpDialogStatus()?.text = rtmpNote
+    }
+
+    /** Restart the last stream from the bar — no dialog, same camera, same settings. */
+    private fun startRtmpFromSaved() {
+        val mac = rtmpPref("rtmp_mac", "")
+        // Prefer the live scan row for a fresh device handle. The fallback matters more than it looks:
+        // while a stream runs, the camera is BLE-connected to us and stops advertising, so the selector
+        // scan that runs alongside cannot see it and the saved row loses its `device` — which is what
+        // made a restart impossible until the app was killed.
+        val scanned = camRows.firstOrNull { it.mac.equals(mac, ignoreCase = true) && it.device != null }
+        val row = scanned ?: rtmpRow?.takeIf { it.mac.equals(mac, ignoreCase = true) }
+        val dev = row?.device
+        if (row == null || dev == null) {
+            toast(getString(R.string.camera_not_in_range, row?.name ?: mac)); return
+        }
+        startRtmp(row, dev)
+    }
+
+    /**
+     * Kick off the livestream sequence with whatever the dialog last saved. The camera leaves its own
+     * AP when it joins the network, which kills every offload path — hence the teardown first, and
+     * why Stop is the only clean way back.
+     */
+    private fun startRtmp(r: CamRow, dev: BluetoothDevice) {
+        val ssid = rtmpPref("rtmp_ssid", "")
+        val url = rtmpPref("rtmp_url", "")
+        val psk = rtmpPref("rtmp_psk", "")
+        val resolutionByte = OsmoCommands.STREAM_RESOLUTIONS[rtmpPref("rtmp_res", DEFAULT_STREAM_RESOLUTION)] ?: 0x0A
+        val bitrateKbps = rtmpQualities[rtmpPref("rtmp_quality", DEFAULT_STREAM_QUALITY)] ?: 6000
+        val eisByte = if (r.model.djiStreamType == CameraModel.DJI_TYPE_NONE) null
+            else OsmoCommands.STREAM_EIS[rtmpPref("rtmp_eis", "Off")]
+        rtmpHost = url.substringAfter("//").substringBefore("/")
+        rtmpRow = r
+        rtmp?.stop()
+        // The stream takes the camera off its AP, so the media grid behind us is dead anyway. Switch
+        // first (it also does the teardown) so the user watches the BLE progress and the bar, not a
+        // grid that can no longer load.
+        switchToSelector()
+        logLine("RTMP: ${r.name ?: r.mac} -> \"$ssid\", ${url.substringBefore('?')} @ ${bitrateKbps}kbps")
+        val settings = RtmpStreamer.StreamSettings(
+            ssid = ssid,
+            psk = psk,
+            url = url,
+            resolutionByte = resolutionByte,
+            bitrateKbps = bitrateKbps,
+            // Mimo exposes no frame-rate setting; 30 is its default and djictl's.
+            fpsByte = OsmoCommands.STREAM_FPS_30,
+            eisByte = eisByte,
+            action5Pro = r.model.djiStreamType == CameraModel.DJI_TYPE_ACTION5_PRO,
+            pin = pinOverride ?: r.model.pairingToken,
+            identifier = if (r.model.isDrone) {
+                DronePairing.identifier(getSharedPreferences("osmosis", MODE_PRIVATE))
+            } else {
+                DjiPairMessagePayload.DEFAULT_IDENTIFIER
+            },
+        )
+        rtmpBusy = true
+        rtmpStreaming = false
+        rtmpBattery = -1
+        rtmp = RtmpStreamer(this, rtmpListenerFor(++rtmpSession))
+        renderRtmpBar(getString(R.string.rtmp_starting, ssid))
+        logLine("RTMP: starting…")
+        rtmp?.start(dev, settings)
+    }
+
+    /** Bumped per session so a previous streamer's late callbacks can't drive the current bar. */
+    private var rtmpSession = 0
+
+    /**
+     * A fresh listener per session: [startRtmp] ends the previous streamer first, and its queued
+     * `onDone` would otherwise land after the new one started and reset the bar to idle.
+     */
+    private fun rtmpListenerFor(session: Int) = object : RtmpStreamer.Listener {
+        private fun live() = session == rtmpSession
+
+        override fun onLog(s: String) = logLine(s)
+
+        override fun onStep(step: String) {
+            main.post { if (live()) renderRtmpBar(step) }
+        }
+
+        override fun onStreaming() {
+            main.post {
+                if (!live()) return@post
+                rtmpBusy = false
+                rtmpStreaming = true
+                renderRtmpBar(getString(R.string.rtmp_bar_streaming, rtmpHost))
+            }
+        }
+
+        override fun onBattery(pct: Int) {
+            main.post {
+                if (!live()) return@post
+                rtmpBattery = pct
+                renderRtmpBar()
+            }
+        }
+
+        override fun onDone(reason: String) {
+            main.post {
+                if (!live()) return@post
+                rtmpBusy = false
+                rtmpStreaming = false
+                rtmpBattery = -1
+                renderRtmpBar(reason)
+                // The link is released by now, so the camera is advertising again — rescan so the list
+                // marks it in range and it can be tapped for media without restarting the app.
+                if (!isFinishing && !isDestroyed) startCameraScan(select = true)
+            }
+        }
     }
 
     private fun switchToGrid() { selectorGroup.visibility = View.GONE; gridGroup.visibility = View.VISIBLE }
@@ -2048,6 +2350,10 @@ class MainActivity : AppCompatActivity(), OsmoScanner.Listener, GattClient.Liste
         private const val EMPTY_LIST_USED_MB = 2_000
         /** How many filenames the bulk-delete confirmation names before it says "…and N more". */
         private const val BULK_DELETE_NAMES_SHOWN = 6
+        /** Preset labels double as the stored pref values, so the dialog and the bar's restart path
+         *  must read the same one — renaming a preset here would reset everyone's saved stream. */
+        private const val DEFAULT_STREAM_RESOLUTION = "1080p"
+        private const val DEFAULT_STREAM_QUALITY = "High — 6000 kbps"
     }
 }
 

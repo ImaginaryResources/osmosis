@@ -78,6 +78,26 @@
     <string name="filter_videos">Відео</string>
     <string name="filter_faved">Улюблені</string>
     <string name="select">Вибрати</string>
+
+    <!-- RTMP livestream -->
+    <string name="rtmp_start">Транслювати через RTMP</string>
+    <string name="rtmp_title">%1$s — трансляція RTMP</string>
+    <string name="rtmp_url_hint">rtmp://server/app/stream-key</string>
+    <string name="rtmp_ssid_hint">Назва мережі Wi-Fi</string>
+    <string name="rtmp_psk_hint">Пароль Wi-Fi</string>
+    <string name="rtmp_resolution">Роздільна здатність</string>
+    <string name="rtmp_quality">Якість (бітрейт)</string>
+    <string name="rtmp_eis">Стабілізація</string>
+    <string name="rtmp_eis_unsupported">Не надсилається на цій моделі</string>
+    <string name="rtmp_start_button">Почати трансляцію</string>
+    <string name="rtmp_stop_button">Зупинити трансляцію</string>
+    <string name="rtmp_need_url">Спочатку введіть URL RTMP</string>
+    <string name="rtmp_need_ssid">Введіть назву мережі Wi-Fi (SSID)</string>
+    <string name="rtmp_starting">Під’єднання до %1$s…</string>
+    <string name="rtmp_idle">Трансляція не активна.</string>
+    <string name="rtmp_bar_streaming">Трансляція на %1$s</string>
+    <string name="rtmp_bar_battery">заряд камери %1$d%%</string>
+    <string name="rtmp_stop_first">Спочатку зупиніть трансляцію</string>
     <string name="download">Завантажити</string>
     <string name="download_count">Завантажити (%1$d)</string>
     <string name="download_running">Завантаження…</string>
