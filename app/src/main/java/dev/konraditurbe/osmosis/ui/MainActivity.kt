@@ -667,6 +667,7 @@ class MainActivity : AppCompatActivity(), OsmoScanner.Listener, GattClient.Liste
 
     /** Swipe menu → Stream: the RTMP form. The stream takes the same BLE link a GPS-sync session holds. */
     private fun onCamRowLivestream(r: CamRow) {
+        if (!r.model.livestream) return   // the row only offers it on models that stream; belt and braces
         if (GpsSyncState.locked) {
             toast(getString(R.string.gps_active_select_blocked))
             return

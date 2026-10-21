@@ -29,8 +29,8 @@ data class CamRow(
 
 /**
  * The camera selector list. Swiping a row's card left reveals its actions on a [SwipeRevealLayout]:
- * an RTMP livestream on a camera in range, GPS sync on the models DJI's R-SDK supports, Delete on a
- * saved camera. A row with none of them doesn't swipe. At most one row is open at a time. Rows are
+ * an RTMP livestream on a streaming-capable camera in range, GPS sync on the models DJI's R-SDK
+ * supports, Delete on a saved camera. A row with none of them doesn't swipe. At most one row is open at a time. Rows are
  * diffed by MAC, so the scan's frequent rebuilds leave an open or mid-drag row alone instead of
  * re-inflating it. While GPS sync or a livestream holds the camera's link the rows lock: dimmed and
  * unswipeable, except the streaming camera's, which stays bright under its LIVE tag.
@@ -170,10 +170,10 @@ class CameraListAdapter(private val actions: Actions) : RecyclerView.Adapter<Cam
         val dim = if (r.inRange) 1f else 0.5f
         h.text.alpha = dim
         h.status.alpha = dim
-        // A livestream needs the camera in range (it pairs and joins the stream's network itself); GPS
-        // sync only where the R-SDK supports the model (never an Xtra); Delete only for a saved camera,
-        // since an unsaved one has nothing to delete.
-        val canStream = r.device != null
+        // A livestream only on the models that stream, and with the camera in range (it pairs and joins
+        // the stream's network itself); GPS sync only where the R-SDK supports the model (never an
+        // Xtra); Delete only for a saved camera, since an unsaved one has nothing to delete.
+        val canStream = r.model.livestream && r.device != null
         h.stream.visibility = if (canStream) View.VISIBLE else View.GONE
         h.gps.visibility = if (r.model.gpsSync) View.VISIBLE else View.GONE
         h.delete.visibility = if (r.saved) View.VISIBLE else View.GONE
