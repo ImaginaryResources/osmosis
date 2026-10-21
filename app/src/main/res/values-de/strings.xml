@@ -33,9 +33,9 @@
     <string name="pairing_approval_message">Bestätige die Kopplung auf dem Kamerabildschirm.</string>
     <string name="drone_approval_message">Die Lichter der Drohne sollten jetzt blinken / umlaufen – das bedeutet, dass sie die Anfrage erhalten hat.\n\nHalte den Ein-/Ausschalter 2–3 Sekunden gedrückt, um die Verbindung zu bestätigen.</string>
 
-    <!-- Camera long-press menu -->
-    <string name="reenter_wifi_password">WLAN-Passwort erneut eingeben</string>
-    <string name="forget_camera">Kamera vergessen</string>
+    <!-- Camera row swipe menu: Delete's confirmation -->
+    <string name="delete_camera_title">%1$s löschen?</string>
+    <string name="delete_camera_message">Das gespeicherte WLAN-Passwort wird ebenfalls entfernt. Kopple die Kamera erneut, um sie wieder zu verwenden.</string>
 
     <!-- Wi-Fi password dialog -->
     <string name="wifi_password_hint">WLAN-Passwort</string>
@@ -56,11 +56,11 @@
 
     <!-- GPS sync -->
     <string name="the_camera">die Kamera</string>
-    <string name="gps_sync_active_banner">GPS-Sync aktiv mit %1$s\nDas Durchsuchen von Medien ist deaktiviert, solange GPS streamt. Tippe auf GPS-Sync zum Stoppen.</string>
-    <string name="gps_sync_connecting_banner">GPS-Sync verbindet mit %1$s… bestätige an der Kamera, falls sie fragt. Tippe auf GPS-Sync zum Abbrechen.</string>
+    <string name="gps_sync_active_banner">GPS-Sync aktiv mit %1$s\nDas Durchsuchen von Medien ist deaktiviert, solange GPS streamt. Tippe auf dieses Banner zum Stoppen.</string>
+    <string name="gps_sync_connecting_banner">GPS-Sync verbindet mit %1$s… bestätige an der Kamera, falls sie fragt. Tippe auf dieses Banner zum Abbrechen.</string>
     <string name="gps_sync_starting">GPS-Sync startet für %1$s – bestätige an der Kamera, falls sie fragt</string>
-    <string name="gps_active_select_blocked">GPS-Sync ist aktiv – tippe auf GPS-Sync zum Stoppen, bevor du eine Kamera auswählst.</string>
-    <string name="gps_stop_before_browse">Stoppe GPS-Sync (tippe auf GPS-Sync), bevor du Medien durchsuchst.</string>
+    <string name="gps_active_select_blocked">GPS-Sync ist aktiv – tippe auf das Banner zum Stoppen, bevor du eine Kamera auswählst.</string>
+    <string name="gps_stop_before_browse">Stoppe GPS-Sync (tippe auf das Banner), bevor du Medien durchsuchst.</string>
     <string name="gps_sync">GPS-Sync</string>
 
     <!-- GPS sync notification -->

@@ -17,13 +17,14 @@
         android:padding="14dp">
 
         <!-- GPS-sync lockout banner: shown while the R-SDK link owns the camera's BLE, so media
-             browsing (which needs the same link for WiFi handoff) is disabled. Tap 🛰️ to stop. -->
+             browsing (which needs the same link for WiFi handoff) is disabled. Tap it to stop. -->
         <TextView
             android:id="@+id/gpsBanner"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:layout_marginBottom="10dp"
             android:background="@color/osmo_danger"
+            android:foreground="?attr/selectableItemBackground"
             android:padding="12dp"
             android:textColor="@color/white"
             android:textSize="13sp"
@@ -31,7 +32,7 @@
             android:lineSpacingExtra="2dp"
             android:visibility="gone"
             tools:visibility="visible"
-            tools:text="🛰️ GPS sync active — media browsing disabled. Tap 🛰️ to stop." />
+            tools:text="GPS sync active with OsmoNano-5A31\nMedia browsing is disabled while GPS is streaming. Tap this banner to stop." />
 
         <LinearLayout
             android:layout_width="match_parent"
@@ -48,22 +49,6 @@
                 android:textColor="@color/osmo_ink"
                 android:textSize="22sp"
                 android:textStyle="bold" />
-
-            <com.google.android.material.button.MaterialButton
-                android:id="@+id/btnGps"
-                style="@style/Widget.Material3.Button.OutlinedButton"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:layout_marginEnd="6dp"
-                android:checkable="true"
-                android:insetTop="0dp"
-                android:insetBottom="0dp"
-                android:minWidth="0dp"
-                android:text="@string/gps_sync"
-                android:textSize="13sp"
-                app:cornerRadius="20dp"
-                app:icon="@null"
-                app:strokeWidth="2dp" />
 
             <com.google.android.material.button.MaterialButton
                 android:id="@+id/btnSaveLogs"
@@ -152,15 +137,20 @@
             app:trackCornerRadius="3dp"
             app:trackThickness="6dp" />
 
-        <ListView
+        <!-- Bleeds out over the group's side padding (and pads it back in) so a swiped card slides off
+             the screen edge rather than being cut off 14dp short of it. Start/End, not Horizontal:
+             MarginLayoutParams drops a negative layout_marginHorizontal as unset. -->
+        <androidx.recyclerview.widget.RecyclerView
             android:id="@+id/cameraList"
             android:layout_width="match_parent"
             android:layout_height="0dp"
             android:layout_weight="1"
+            android:layout_marginStart="-14dp"
+            android:layout_marginEnd="-14dp"
             android:clipToPadding="false"
-            android:divider="@null"
-            android:dividerHeight="0dp"
-            android:scrollbarStyle="outsideOverlay" />
+            android:paddingHorizontal="14dp"
+            android:scrollbarStyle="outsideOverlay"
+            android:scrollbars="vertical" />
 
         <com.google.android.material.button.MaterialButton
             android:id="@+id/btnRescan"

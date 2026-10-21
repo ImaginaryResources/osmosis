@@ -33,9 +33,9 @@
     <string name="drone_approval_message">无人机的指示灯现在应该在闪烁/跑马——这说明它已收到请求。\n\n长按电源键 2–3 秒以确认连接。</string>
     <string name="drone_power_button_desc">无人机的电源键，位于机身尾部</string>
 
-    <!-- Camera long-press menu -->
-    <string name="reenter_wifi_password">重新输入 Wi-Fi 密码</string>
-    <string name="forget_camera">忘记此相机</string>
+    <!-- Camera row swipe menu: Delete's confirmation -->
+    <string name="delete_camera_title">删除 %1$s？</string>
+    <string name="delete_camera_message">已保存的 Wi-Fi 密码也会一并删除。如需再次使用，请重新配对。</string>
 
     <!-- Wi-Fi password dialog -->
     <string name="wifi_password_hint">Wi-Fi 密码</string>
@@ -56,11 +56,11 @@
 
     <!-- GPS sync -->
     <string name="the_camera">相机</string>
-    <string name="gps_sync_active_banner">正在与 %1$s 进行 GPS 同步\nGPS 流式传输期间无法浏览媒体。点按 GPS 同步 停止。</string>
-    <string name="gps_sync_connecting_banner">正在连接 %1$s 进行 GPS 同步…如相机弹出提示请批准。点按 GPS 同步 取消。</string>
+    <string name="gps_sync_active_banner">正在与 %1$s 进行 GPS 同步\nGPS 流式传输期间无法浏览媒体。点按此横幅停止。</string>
+    <string name="gps_sync_connecting_banner">正在连接 %1$s 进行 GPS 同步…如相机弹出提示请批准。点按此横幅取消。</string>
     <string name="gps_sync_starting">正在为 %1$s 启动 GPS 同步——如相机弹出提示请批准</string>
-    <string name="gps_active_select_blocked">GPS 同步进行中——请先点按 GPS 同步 停止，再选择相机。</string>
-    <string name="gps_stop_before_browse">请先停止 GPS 同步（点按 GPS 同步），再浏览媒体。</string>
+    <string name="gps_active_select_blocked">GPS 同步进行中——请先点按横幅停止，再选择相机。</string>
+    <string name="gps_stop_before_browse">请先停止 GPS 同步（点按横幅），再浏览媒体。</string>
     <string name="gps_sync">GPS 同步</string>
 
     <!-- GPS sync notification -->

@@ -18,4 +18,10 @@
          -night variant for contrast on dark surfaces. -->
     <color name="osmo_warn">#E0A83E</color>
     <color name="osmo_low">#E05A4E</color>
+
+    <!-- Camera-row swipe menu. The tiles are muted fills under white icons, the same in both themes;
+         the pill behind them sits darker than the page (and, in dark, darker than the card). -->
+    <color name="osmo_action_gps">#1F6587</color>
+    <color name="osmo_action_delete">#A4403A</color>
+    <color name="osmo_swipe_well">#DDD6CB</color>
 </resources>

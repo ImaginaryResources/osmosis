@@ -109,6 +109,24 @@ class CameraModelBrandTest {
     }
 
     @Test
+    fun `gps sync is offered only on the R-SDK models`() {
+        assertEquals(0xFF33, CameraModel.resolve(0x0014, "OsmoAction4-ABCD", Brand.DJI).rsdkDeviceId)
+        assertEquals(0xFF44, CameraModel.resolve(0x0015, "OsmoAction5Pro-1234", Brand.DJI).rsdkDeviceId)
+        assertEquals(0xFF66, CameraModel.resolve(0x0017, "Osmo360-1234", Brand.DJI).rsdkDeviceId)
+        assertEquals(0xFF55, CameraModel.resolve(0x0018, "OsmoAction6-84EA", Brand.DJI).rsdkDeviceId)
+
+        assertFalse(CameraModel.resolve(0x0019, "OsmoNano-C2D8", Brand.DJI).gpsSync)
+        assertFalse(CameraModel.resolve(0x0020, "OsmoPocket3-C285", Brand.DJI).gpsSync)
+        assertFalse(CameraModel.resolve(0x0070, "1001", Brand.DJI).gpsSync)
+    }
+
+    @Test
+    fun `an xtra rebadge gets no gps sync even where its dji twin does`() {
+        assertFalse(CameraModel.resolve(0x0015, "XtraEdgePro-2DCA16", Brand.XTRA).gpsSync)
+        assertFalse(CameraModel.resolve(0x0014, "XtraEdge-1234", Brand.XTRA).gpsSync)
+    }
+
+    @Test
     fun `an unknown model in the camera range still gets camera defaults`() {
         val unknown = CameraModel.resolve(0x0016, "Osmo Whatever", Brand.DJI)
         assertFalse(unknown.isDrone)

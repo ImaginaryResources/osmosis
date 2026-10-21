@@ -31,11 +31,27 @@ Read The Verge's review of an early version of the app:
 
 ## Download
 
-- Play Store: Maybe in the future. Sorting it out.
+[<img src="https://f-droid.org/badge/get-it-on.png"
+    alt="Get it on F-Droid"
+    height="80">](https://f-droid.org/packages/dev.konraditurbe.osmosis/)
+
+Directly from GitHub releases:
+
 - GitHub releases: https://github.com/KonradIT/osmosis/releases
-- Unobtanium: https://apps.obtainium.imranr.dev/redirect?r=obtainium://add/https://github.com/KonradIT/osmosis
+- Unobtanium - app that notifies you of any update to the github releases: https://apps.obtainium.imranr.dev/redirect?r=obtainium://add/https://github.com/KonradIT/osmosis
 - RSS feed: `github.com/KonradIT/osmosis/releases.atom` - Add this to your RSS reader of choice, eg: [Feeder](https://github.com/spacecowboy/feeder)
-- F-Droid: submitted, awaiting review — [fdroiddata!45005](https://gitlab.com/fdroid/fdroiddata/-/merge_requests/45005)
+
+**Osmosis will not be published to Google Play**
+
+In 2024 the EU introduced a law wherein any app publisher who is classified as a merchant (eg: offering paid apps/inapp subscriptions) will have their address and phone number shown in the Play Store listing by everyone who visits the app's listing.
+
+I used to have a Google Play account with 1 paid app. This makes my account a merchant and therefore subject to this EU law.
+
+I tried to look for solutions, and it boils down to paying a registered agent / virtual office to give me a contract where *their* address is shown.
+
+Not worth my time or money entertaining insane EU rules. So be it. No Play.
+
+[More info on Google's rules](https://www.reddit.com/r/androiddev/comments/1u1106l/why_do_individual_google_play_developers_have_to/)
 
 ## Features
 

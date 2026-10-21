@@ -33,9 +33,9 @@
     <string name="pairing_approval_message">Підтвердьте з’єднання на екрані камери.</string>
     <string name="drone_approval_message">Індикатори дрона зараз мають блимати / бігти по колу — це означає, що він отримав запит.\n\nНатисніть і утримуйте кнопку живлення 2–3 секунди, щоб підтвердити з’єднання.</string>
 
-    <!-- Camera long-press menu -->
-    <string name="reenter_wifi_password">Ввести пароль Wi-Fi ще раз</string>
-    <string name="forget_camera">Забути камеру</string>
+    <!-- Camera row swipe menu: Delete's confirmation -->
+    <string name="delete_camera_title">Видалити %1$s?</string>
+    <string name="delete_camera_message">Збережений пароль Wi-Fi також буде видалено. Щоб знову користуватися камерою, з’єднайтеся з нею ще раз.</string>
 
     <!-- Wi-Fi password dialog -->
     <string name="wifi_password_hint">Пароль Wi-Fi</string>
@@ -56,11 +56,11 @@
 
     <!-- GPS sync -->
     <string name="the_camera">камера</string>
-    <string name="gps_sync_active_banner">Синхронізація GPS активна з %1$s\nПерегляд медіа вимкнено, доки триває передавання GPS. Торкніться GPS-синхр., щоб зупинити.</string>
-    <string name="gps_sync_connecting_banner">Підключення синхронізації GPS до %1$s… підтвердьте на камері, якщо з’явиться запит. Торкніться GPS-синхр., щоб скасувати.</string>
+    <string name="gps_sync_active_banner">Синхронізація GPS активна з %1$s\nПерегляд медіа вимкнено, доки триває передавання GPS. Торкніться цього банера, щоб зупинити.</string>
+    <string name="gps_sync_connecting_banner">Підключення синхронізації GPS до %1$s… підтвердьте на камері, якщо з’явиться запит. Торкніться цього банера, щоб скасувати.</string>
     <string name="gps_sync_starting">Синхронізація GPS запускається для %1$s — підтвердьте на камері, якщо з’явиться запит</string>
-    <string name="gps_active_select_blocked">Синхронізація GPS активна — торкніться GPS-синхр., щоб зупинити її перед вибором камери.</string>
-    <string name="gps_stop_before_browse">Зупиніть синхронізацію GPS (торкніться GPS-синхр.) перед переглядом медіа.</string>
+    <string name="gps_active_select_blocked">Синхронізація GPS активна — торкніться банера, щоб зупинити її перед вибором камери.</string>
+    <string name="gps_stop_before_browse">Зупиніть синхронізацію GPS (торкніться банера) перед переглядом медіа.</string>
     <string name="gps_sync">GPS-синхр.</string>
 
     <!-- GPS sync notification -->

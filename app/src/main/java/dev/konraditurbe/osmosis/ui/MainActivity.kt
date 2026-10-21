@@ -12,8 +12,9 @@ import android.os.Looper
 import android.view.View
 import android.widget.EditText
 import androidx.recyclerview.widget.GridLayoutManager
+import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
-import android.widget.ListView
+import androidx.recyclerview.widget.SimpleItemAnimator
 import android.widget.ProgressBar
 import android.widget.TextView
 import android.widget.Toast
@@ -82,14 +83,14 @@ class MainActivity : AppCompatActivity(), OsmoScanner.Listener, GattClient.Liste
     private lateinit var overallText: TextView
     private lateinit var fileText: TextView
     private lateinit var progressArea: View
-    private lateinit var cameraList: ListView
+    private lateinit var cameraList: RecyclerView
+    private lateinit var cameraAdapter: CameraListAdapter
     private lateinit var selectorGroup: View
     private lateinit var gridGroup: View
     private lateinit var selectorHint: TextView
     private lateinit var connectBar: LinearProgressIndicator
     private lateinit var savedCameras: SavedCameras
     private lateinit var statusPill: StatusPillView
-    private lateinit var btnGps: MaterialButton
     private lateinit var gpsBanner: TextView
     private lateinit var rtmpBar: View
     private lateinit var rtmpBarText: TextView
@@ -99,7 +100,7 @@ class MainActivity : AppCompatActivity(), OsmoScanner.Listener, GattClient.Liste
 
     // GPS-sync lockout: while the R-SDK link owns the camera's BLE, media browsing must be blocked
     // (both flows fight over one GATT). The service publishes its state on GpsSyncState; we mirror it
-    // into a banner + a disabled selector, and turn the satellite button into the stop control.
+    // into a banner + a locked selector, and the banner doubles as the stop control.
     private val gpsStateListener = dev.konraditurbe.osmosis.rsdk.GpsSyncState.Listener { phase, name ->
         main.post { renderGpsLock(phase, name) }
     }
@@ -327,8 +328,22 @@ class MainActivity : AppCompatActivity(), OsmoScanner.Listener, GattClient.Liste
         statusPill = findViewById(R.id.statusPill)
         savedCameras = SavedCameras(getSharedPreferences("osmosis", MODE_PRIVATE))
         findViewById<View>(R.id.btnRescan).setOnClickListener { startCameraScan(select = true) }
-        cameraList.setOnItemClickListener { _, _, pos, _ -> onCamRowClick(pos) }
-        cameraList.setOnItemLongClickListener { _, _, pos, _ -> onCamRowLongClick(pos) }
+        cameraAdapter = CameraListAdapter(object : CameraListAdapter.Actions {
+            override fun onTap(r: CamRow) = onCamRowClick(r)
+            override fun onGpsSync(r: CamRow) = onCamRowGps(r)
+            override fun onDelete(r: CamRow) = onCamRowDelete(r)
+        })
+        cameraList.layoutManager = LinearLayoutManager(this)
+        cameraList.adapter = cameraAdapter
+        // Rebind a changed row in place: the default cross-fade swaps in a second view, which would
+        // drop a swipe in progress.
+        (cameraList.itemAnimator as? SimpleItemAnimator)?.supportsChangeAnimations = false
+        // A scroll closes the open row, so a half-uncovered menu doesn't ride off with the list.
+        cameraList.addOnScrollListener(object : RecyclerView.OnScrollListener() {
+            override fun onScrollStateChanged(rv: RecyclerView, newState: Int) {
+                if (newState == RecyclerView.SCROLL_STATE_DRAGGING) cameraAdapter.closeOpen()
+            }
+        })
         findViewById<View>(R.id.fabDownload).setOnClickListener { onDownloadClicked() }
         findViewById<View>(R.id.fabDelete).setOnClickListener { onBulkDeleteClicked() }
         rtmpBar = findViewById(R.id.rtmpBar)
@@ -342,8 +357,8 @@ class MainActivity : AppCompatActivity(), OsmoScanner.Listener, GattClient.Liste
         // the camera list without digging the form back up.
         renderRtmpBar()
         wireGalleryChips()
-        // "Save logs" button (checkable, same outlined pill as GPS Sync) → persist all log lines to a
-        // rotating .log file in external files dir.
+        // "Save logs" button (checkable outlined pill) → persist all log lines to a rotating .log file in
+        // external files dir.
         val prefs = getSharedPreferences("osmosis", MODE_PRIVATE)
         val saveLogs = findViewById<MaterialButton>(R.id.btnSaveLogs)
         saveLogs.isChecked = prefs.getBoolean("save_logs", false)
@@ -359,17 +374,12 @@ class MainActivity : AppCompatActivity(), OsmoScanner.Listener, GattClient.Liste
             }
         }
 
-        // 🛰️ GPS-sync mode (R-SDK): when on, picking a camera starts the GPS foreground service
-        // instead of the usual WiFi offload. Default off.
-        btnGps = findViewById(R.id.btnGps)
+        // GPS sync (R-SDK) starts from a camera row's swipe menu. While a link is bound, the lockout
+        // banner is the in-app STOP control (the service notification's Stop action is the other).
         gpsBanner = findViewById(R.id.gpsBanner)
-        btnGps.isChecked = prefs.getBoolean("gps_mode", false)
-        btnGps.addOnCheckedChangeListener { _, checked ->
-            prefs.edit().putBoolean("gps_mode", checked).apply()
-            // While a GPS link is bound, the satellite button is the STOP control: unchecking it ends
-            // the service (the only action allowed during the lockout).
-            if (!checked && dev.konraditurbe.osmosis.rsdk.GpsSyncState.locked) {
-                logLine("GPS sync: stop requested (satellite tapped).")
+        gpsBanner.setOnClickListener {
+            if (GpsSyncState.locked) {
+                logLine("GPS sync: stop requested (banner tapped).")
                 GpsService.stop(this)
             }
         }
@@ -516,9 +526,9 @@ class MainActivity : AppCompatActivity(), OsmoScanner.Listener, GattClient.Liste
     }
 
     /**
-     * Mirror the GPS-sync service's state into the UI: a coloured banner and a disabled selector while
-     * a link is bound (STARTING/ACTIVE), cleared when it stops. The satellite button stays live — it's
-     * the only way out of the lockout.
+     * Mirror the GPS-sync service's state into the UI: a coloured banner and a locked selector while
+     * a link is bound (STARTING/ACTIVE), cleared when it stops. Tapping the banner is the way out of
+     * the lockout.
      */
     private fun renderGpsLock(phase: GpsSyncState.Phase, name: String?) {
         val locked = phase != GpsSyncState.Phase.STOPPED
@@ -536,12 +546,11 @@ class MainActivity : AppCompatActivity(), OsmoScanner.Listener, GattClient.Liste
             }
             GpsSyncState.Phase.STOPPED -> gpsBanner.visibility = View.GONE
         }
-        // Lock camera selection + rescan while the link owns the BLE; keep btnGps checked so its tap
-        // reads as "stop". (onCamRowClick / onCameraChosen also hard-guard, in case a tap slips through.)
-        cameraList.isEnabled = !locked
+        // Lock camera selection + rescan while the link owns the BLE: rows stop swiping, and a tap on one
+        // gets the lockout toast from onCamRowClick (onCameraChosen hard-guards too).
+        cameraAdapter.locked = locked
         cameraList.alpha = if (locked) 0.4f else 1f
         findViewById<View>(R.id.btnRescan).apply { isEnabled = !locked; alpha = if (locked) 0.4f else 1f }
-        if (locked && !btnGps.isChecked) btnGps.isChecked = true
     }
 
     private fun selfTestDuml() {
@@ -631,16 +640,16 @@ class MainActivity : AppCompatActivity(), OsmoScanner.Listener, GattClient.Liste
             CamRow(c.device.address, c.name, c.model, inRange = true, saved = false, device = c.device)
         }
         camRows = savedRows + newRows
-        cameraList.adapter = CameraListAdapter(camRows)
+        cameraAdapter.submit(camRows)
         if (scanner?.isScanning() != true) {
             selectorHint.text = if (camRows.isEmpty()) getString(R.string.no_cameras_hint)
             else getString(R.string.cameras_in_range, savedRows.count { it.inRange }, savedRows.size, newRows.size)
         }
     }
 
-    private fun onCamRowClick(pos: Int) {
-        // Locked out while a GPS link is bound — the satellite button is the only way forward.
-        if (dev.konraditurbe.osmosis.rsdk.GpsSyncState.locked) {
+    private fun onCamRowClick(r: CamRow) {
+        // Locked out while a GPS link is bound — tapping the banner is the only way forward.
+        if (GpsSyncState.locked) {
             toast(getString(R.string.gps_active_select_blocked))
             return
         }
@@ -650,16 +659,46 @@ class MainActivity : AppCompatActivity(), OsmoScanner.Listener, GattClient.Liste
             toast(getString(R.string.rtmp_stop_first))
             return
         }
-        val r = camRows.getOrNull(pos) ?: return
-        // 🛰️ GPS-sync mode: connect over R-SDK (BLE only, no WiFi) via the foreground service.
-        if (btnGps.isChecked) {
-            if (r.device != null || r.saved) startGpsMode(r.mac, r.name ?: r.mac)
-            else Toast.makeText(this, getString(R.string.camera_not_in_range, r.name ?: r.mac), Toast.LENGTH_SHORT).show()
-            return
-        }
         val dev = r.device
         if (dev != null) onCameraChosen(dev)
         else Toast.makeText(this, getString(R.string.camera_not_in_range, r.name ?: r.mac), Toast.LENGTH_SHORT).show()
+    }
+
+    /** Swipe menu → GPS sync: connect over R-SDK (BLE only, no WiFi) via the foreground service. */
+    private fun onCamRowGps(r: CamRow) {
+        if (!r.model.gpsSync) return   // the row only offers it on R-SDK models; belt and braces
+        if (GpsSyncState.locked) {
+            toast(getString(R.string.gps_active_select_blocked))
+            return
+        }
+        if (r.device != null || r.saved) startGpsMode(r.mac, r.name ?: r.mac)
+        else Toast.makeText(this, getString(R.string.camera_not_in_range, r.name ?: r.mac), Toast.LENGTH_SHORT).show()
+    }
+
+    /** Swipe menu → Delete: confirm first. The row stays open behind the dialog; any way out but Delete closes it. */
+    private fun onCamRowDelete(r: CamRow) {
+        AlertDialog.Builder(this)
+            .setTitle(getString(R.string.delete_camera_title, r.model.name))
+            .setMessage(R.string.delete_camera_message)
+            .setPositiveButton(R.string.delete) { _, _ -> forgetCamera(r) }
+            .setNegativeButton(R.string.cancel, null)
+            .setOnDismissListener { cameraAdapter.closeOpen() }
+            .show()
+            .getButton(AlertDialog.BUTTON_POSITIVE)
+            .setTextColor(ContextCompat.getColor(this, R.color.osmo_danger))
+    }
+
+    /**
+     * Forget a saved camera: its entry, its Wi-Fi password and its launcher shortcut. The row slides out
+     * before the list closes the gap; a camera still in range comes straight back as NEW, since the
+     * scan still sees it.
+     */
+    private fun forgetCamera(r: CamRow) {
+        savedCameras.remove(r.mac)
+        getSharedPreferences("osmosis", MODE_PRIVATE).edit().remove("pass_${r.mac}").apply()
+        logLine("Forgot ${r.name ?: r.mac}")
+        CameraShortcuts.refresh(this)   // drop it from the launcher shortcuts too
+        cameraAdapter.dismissOpen { rebuildCameraList() }
     }
 
     /** Start the R-SDK GPS-sync foreground service for [mac], requesting location/notification perms first. */
@@ -705,35 +744,6 @@ class MainActivity : AppCompatActivity(), OsmoScanner.Listener, GattClient.Liste
         // here, or the next camera's pairing/REQ replies get mis-deduped against the last camera's state.
         lastPairStatus = -99; credsRequested = false; activateState = -1; reqSeen.clear()
         setConnectProgress(0)
-    }
-
-    private fun onCamRowLongClick(pos: Int): Boolean {
-        val r = camRows.getOrNull(pos) ?: return false
-        // Anything the camera can act on goes here. RTMP only needs the camera in range (it pairs and
-        // joins the home network itself), while forgetting a camera only means anything once saved.
-        val actions = mutableListOf<Pair<String, () -> Unit>>()
-        // An RTMP stream takes the same BLE link the R-SDK GPS session holds, so the two can't coexist.
-        if (r.device != null && !GpsSyncState.locked) actions += getString(R.string.rtmp_start) to { promptRtmp(r) }
-        if (r.saved) {
-            actions += getString(R.string.reenter_wifi_password) to {
-                promptPasswordFor(r.mac) { logLine("Password updated.") }
-            }
-            actions += getString(R.string.forget_camera) to { forgetCamera(r) }
-        }
-        if (actions.isEmpty()) return false
-        AlertDialog.Builder(this)
-            .setTitle("${r.model.name}  (${r.name ?: r.mac})")
-            .setItems(actions.map { it.first }.toTypedArray()) { _, i -> actions[i].second() }
-            .show()
-        return true
-    }
-
-    private fun forgetCamera(r: CamRow) {
-        savedCameras.remove(r.mac)
-        getSharedPreferences("osmosis", MODE_PRIVATE).edit().remove("pass_${r.mac}").apply()
-        logLine("Forgot ${r.name ?: r.mac}")
-        rebuildCameraList()
-        CameraShortcuts.refresh(this)   // drop it from the launcher shortcuts too
     }
 
     // ---- RTMP livestream ----------------------------------------------------------------------
@@ -2109,7 +2119,7 @@ class MainActivity : AppCompatActivity(), OsmoScanner.Listener, GattClient.Liste
                 if (!model.verified) "  🧪" else "")
             main.post { rebuildCameraList() }
             // App Shortcut target just appeared — connect immediately, no tap, as onCamRowClick would.
-            if (!connecting && !btnGps.isChecked && addr.equals(autoPickMac, ignoreCase = true)) {
+            if (!connecting && addr.equals(autoPickMac, ignoreCase = true)) {
                 autoPickMac = null
                 main.post { onCameraChosen(device) }
             }

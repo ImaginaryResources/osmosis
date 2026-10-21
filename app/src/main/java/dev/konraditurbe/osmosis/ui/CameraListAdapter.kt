@@ -4,10 +4,12 @@ import android.bluetooth.BluetoothDevice
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
-import android.widget.BaseAdapter
 import android.widget.ImageView
 import android.widget.TextView
 import androidx.core.content.ContextCompat
+import androidx.core.view.ViewCompat
+import androidx.recyclerview.widget.DiffUtil
+import androidx.recyclerview.widget.RecyclerView
 import dev.konraditurbe.osmosis.R
 import dev.konraditurbe.osmosis.ble.CameraModel
 
@@ -25,32 +27,163 @@ data class CamRow(
     val device: BluetoothDevice?,
 )
 
-class CameraListAdapter(private val rows: List<CamRow>) : BaseAdapter() {
-    override fun getCount() = rows.size
-    override fun getItem(position: Int) = rows[position]
-    override fun getItemId(position: Int) = position.toLong()
+/**
+ * The camera selector list. Swiping a row's card left reveals its actions on a [SwipeRevealLayout]:
+ * GPS sync on the models DJI's R-SDK supports, Delete on a saved camera. A row with neither doesn't
+ * swipe. At most one row is open at a time. Rows are diffed by MAC, so the scan's frequent rebuilds
+ * leave an open or mid-drag row alone instead of re-inflating it.
+ */
+class CameraListAdapter(private val actions: Actions) : RecyclerView.Adapter<CameraListAdapter.Holder>() {
 
-    override fun getView(position: Int, convertView: View?, parent: ViewGroup): View {
-        val v = convertView ?: LayoutInflater.from(parent.context)
-            .inflate(R.layout.item_camera, parent, false)
+    interface Actions {
+        fun onTap(r: CamRow)
+        fun onGpsSync(r: CamRow)
+        fun onDelete(r: CamRow)
+    }
+
+    class Holder(v: View) : RecyclerView.ViewHolder(v) {
+        val swipe = v as SwipeRevealLayout
+        val card: View = v.findViewById(R.id.camCard)
+        val text: View = v.findViewById(R.id.camText)
+        val type: TextView = v.findViewById(R.id.camType)
+        val name: TextView = v.findViewById(R.id.camName)
+        val tag: TextView = v.findViewById(R.id.camTag)
+        val status: ImageView = v.findViewById(R.id.camStatus)
+        val gps: View = v.findViewById(R.id.actionGps)
+        val delete: View = v.findViewById(R.id.actionDelete)
+        var row: CamRow? = null
+        // The card's TalkBack actions, mirroring whichever tiles the row shows; 0 = not added.
+        var gpsAction = 0
+        var deleteAction = 0
+    }
+
+    private var rows: List<CamRow> = emptyList()
+    private var openMac: String? = null
+    private var list: RecyclerView? = null
+
+    /** While a GPS-sync link owns the BLE no row swipes open; a tap still reaches [Actions.onTap], which says why. */
+    var locked = false
+        set(value) {
+            field = value
+            if (value) openMac = null
+            forEachHolder { it.swipe.swipeEnabled = !value }
+        }
+
+    fun submit(newRows: List<CamRow>) {
+        val old = rows
+        val diff = DiffUtil.calculateDiff(object : DiffUtil.Callback() {
+            override fun getOldListSize() = old.size
+            override fun getNewListSize() = newRows.size
+            override fun areItemsTheSame(o: Int, n: Int) = old[o].mac == newRows[n].mac
+            override fun areContentsTheSame(o: Int, n: Int) = old[o] == newRows[n]
+        })
+        rows = newRows
+        if (newRows.none { it.mac == openMac }) openMac = null
+        diff.dispatchUpdatesTo(this)
+    }
+
+    /** Close the open row, if any: on a scroll, and when the Delete dialog goes away. */
+    fun closeOpen() {
+        val mac = openMac ?: return
+        openMac = null
+        holderFor(mac)?.swipe?.close()
+    }
+
+    /** Slide the open row out of view, then run [then], which takes it out of the list. */
+    fun dismissOpen(then: () -> Unit) {
+        val h = openMac?.let(::holderFor)
+        openMac = null
+        if (h != null) h.swipe.dismiss(then) else then()
+    }
+
+    override fun getItemCount() = rows.size
+
+    override fun onAttachedToRecyclerView(rv: RecyclerView) { list = rv }
+
+    override fun onDetachedFromRecyclerView(rv: RecyclerView) { list = null }
+
+    override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): Holder {
+        val h = Holder(LayoutInflater.from(parent.context).inflate(R.layout.item_camera, parent, false))
+        h.card.setOnClickListener {
+            val r = h.row ?: return@setOnClickListener
+            // With another row open, a tap elsewhere only closes it, like tapping outside a menu.
+            if (openMac != null) closeOpen() else actions.onTap(r)
+        }
+        h.gps.setOnClickListener {
+            val r = h.row ?: return@setOnClickListener
+            h.swipe.close()
+            actions.onGpsSync(r)
+        }
+        // Delete leaves the row open behind its confirm dialog, so it's plain which camera is going.
+        h.delete.setOnClickListener { h.row?.let(actions::onDelete) }
+        h.swipe.listener = object : SwipeRevealLayout.Listener {
+            override fun onSwipeStart() {
+                if (openMac != h.row?.mac) closeOpen()
+            }
+
+            override fun onOpenChanged(open: Boolean) {
+                val mac = h.row?.mac ?: return
+                if (open) openMac = mac else if (openMac == mac) openMac = null
+            }
+        }
+        return h
+    }
+
+    override fun onBindViewHolder(h: Holder, position: Int) {
         val r = rows[position]
-        val camType = v.findViewById<TextView>(R.id.camType)
-        camType.text = r.model.name
+        val ctx = h.itemView.context
+        h.row = r
+        h.type.text = r.model.name
         // An unverified model gets the flask after its name (compound drawable, sized to the 16sp row).
         if (!r.model.verified) {
-            val d = ContextCompat.getDrawable(v.context, R.drawable.ic_unverified_model)!!.mutate()
-            val s = (16 * v.resources.displayMetrics.density).toInt()
+            val d = ContextCompat.getDrawable(ctx, R.drawable.ic_unverified_model)!!.mutate()
+            val s = (16 * ctx.resources.displayMetrics.density).toInt()
             d.setBounds(0, 0, s, s)
-            camType.setCompoundDrawablesRelative(null, null, d, null)
-            camType.compoundDrawablePadding = (6 * v.resources.displayMetrics.density).toInt()
+            h.type.setCompoundDrawablesRelative(null, null, d, null)
+            h.type.compoundDrawablePadding = (6 * ctx.resources.displayMetrics.density).toInt()
         } else {
-            camType.setCompoundDrawablesRelative(null, null, null, null)
+            h.type.setCompoundDrawablesRelative(null, null, null, null)
         }
-        v.findViewById<TextView>(R.id.camName).text = r.name ?: r.mac
-        v.findViewById<ImageView>(R.id.camStatus)
-            .setImageResource(if (r.inRange) R.drawable.ic_signal_in_range else R.drawable.ic_signal_out_of_range)
-        v.findViewById<TextView>(R.id.camTag).visibility = if (r.saved) View.GONE else View.VISIBLE
-        v.alpha = if (r.inRange) 1f else 0.5f // dim saved cameras that aren't in range
-        return v
+        h.name.text = r.name ?: r.mac
+        h.status.setImageResource(if (r.inRange) R.drawable.ic_signal_in_range else R.drawable.ic_signal_out_of_range)
+        h.tag.visibility = if (r.saved) View.GONE else View.VISIBLE
+        // Dim a camera that isn't in range by its content, not the whole card: a see-through card would
+        // show the swipe actions behind it.
+        val dim = if (r.inRange) 1f else 0.5f
+        h.text.alpha = dim
+        h.status.alpha = dim
+        // GPS sync only where the R-SDK supports the model (never an Xtra); Delete only for a saved
+        // camera, since an unsaved one has nothing to delete.
+        h.gps.visibility = if (r.model.gpsSync) View.VISIBLE else View.GONE
+        h.delete.visibility = if (r.saved) View.VISIBLE else View.GONE
+        // TalkBack can't drag the card, so the same actions sit on the card itself.
+        h.gpsAction = syncAction(h, h.gpsAction, r.model.gpsSync, R.string.gps_sync, actions::onGpsSync)
+        h.deleteAction = syncAction(h, h.deleteAction, r.saved, R.string.delete, actions::onDelete)
+        h.swipe.swipeEnabled = !locked
+        if (!h.swipe.isDragging) h.swipe.snap(open = r.mac == openMac)
+    }
+
+    /** Add or remove one of the card's TalkBack actions to match [wanted]; returns its id, 0 if absent. */
+    private fun syncAction(h: Holder, id: Int, wanted: Boolean, label: Int, run: (CamRow) -> Unit): Int = when {
+        wanted && id == 0 ->
+            ViewCompat.addAccessibilityAction(h.card, h.itemView.context.getString(label)) { _, _ ->
+                h.row?.let(run)
+                true
+            }
+        !wanted && id != 0 -> {
+            ViewCompat.removeAccessibilityAction(h.card, id)
+            0
+        }
+        else -> id
+    }
+
+    private fun holderFor(mac: String): Holder? {
+        val i = rows.indexOfFirst { it.mac == mac }
+        return if (i < 0) null else list?.findViewHolderForAdapterPosition(i) as? Holder
+    }
+
+    private fun forEachHolder(f: (Holder) -> Unit) {
+        val rv = list ?: return
+        for (i in 0 until rv.childCount) (rv.getChildViewHolder(rv.getChildAt(i)) as? Holder)?.let(f)
     }
 }

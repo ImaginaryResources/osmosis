@@ -33,9 +33,9 @@
     <string name="pairing_approval_message">Aprueba el emparejamiento en la pantalla de la cámara.</string>
     <string name="drone_approval_message">Las luces del dron deberían estar parpadeando / girando ahora: eso significa que recibió la solicitud.\n\nMantén pulsado su botón de encendido 2–3 segundos para confirmar la conexión.</string>
 
-    <!-- Camera long-press menu -->
-    <string name="reenter_wifi_password">Volver a introducir la contraseña Wi-Fi</string>
-    <string name="forget_camera">Olvidar cámara</string>
+    <!-- Camera row swipe menu: Delete's confirmation -->
+    <string name="delete_camera_title">¿Eliminar %1$s?</string>
+    <string name="delete_camera_message">También se borra su contraseña Wi-Fi guardada. Vuelve a emparejarla para usarla.</string>
 
     <!-- Wi-Fi password dialog -->
     <string name="wifi_password_hint">Contraseña Wi-Fi</string>
@@ -56,11 +56,11 @@
 
     <!-- GPS sync -->
     <string name="the_camera">la cámara</string>
-    <string name="gps_sync_active_banner">Sincronización GPS activa con %1$s\nLa exploración de contenido está desactivada mientras el GPS transmite. Haz click en GPS Sync para detener.</string>
-    <string name="gps_sync_connecting_banner">Conectando la sincronización GPS con %1$s… aprueba en la cámara si lo pide. Haz click en GPS Sync para cancelar.</string>
+    <string name="gps_sync_active_banner">Sincronización GPS activa con %1$s\nLa exploración de contenido está desactivada mientras el GPS transmite. Haz click en este aviso para detener.</string>
+    <string name="gps_sync_connecting_banner">Conectando la sincronización GPS con %1$s… aprueba en la cámara si lo pide. Haz click en este aviso para cancelar.</string>
     <string name="gps_sync_starting">Iniciando la sincronización GPS con %1$s: aprueba en la cámara si lo pide</string>
-    <string name="gps_active_select_blocked">La sincronización GPS está activa: haz click en GPS Sync para detenerla antes de seleccionar una cámara.</string>
-    <string name="gps_stop_before_browse">Detén la sincronización GPS (haz click en GPS Sync) antes de explorar el contenido.</string>
+    <string name="gps_active_select_blocked">La sincronización GPS está activa: haz click en el aviso para detenerla antes de seleccionar una cámara.</string>
+    <string name="gps_stop_before_browse">Detén la sincronización GPS (haz click en el aviso) antes de explorar el contenido.</string>
     <string name="gps_sync">GPS Sync</string>
 
     <!-- GPS sync notification -->
