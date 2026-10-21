@@ -65,7 +65,7 @@ Not worth my time or money entertaining insane EU rules. So be it. No Play.
 - **Multi-camera** — remembers your cameras and shows which are currently in range.
 - **Favorite/delete** your videos/photos from the app, and view previously hearted media
 - **Sync GPS with your Osmo**: Uses R-SDK [Osmo GPS controller](https://github.com/dji-sdk/Osmo-GPS-Controller-Demo) commands to send GPS from the phone to your camera. Useful to add stats later using [Telemetry Overlay](https://goprotelemetryextractor.com/telemetry-overlay-gps-video-sensors).
-- **RTMP livestream** — long-press a camera to send it to a WiFi network and start streaming to YouTube/Twitch/anything RTMP. Ported from [djictl](https://github.com/xaionaro-go/djictl).
+- **RTMP livestream** — swipe a camera left and tap Stream to send it to a WiFi network and start streaming to YouTube/Twitch/anything RTMP. Ported from [djictl](https://github.com/xaionaro-go/djictl).
 
 <img src="./screenshots/Screenshot_20260714-210742_1.png" width="500"/>
 

@@ -29,14 +29,16 @@ data class CamRow(
 
 /**
  * The camera selector list. Swiping a row's card left reveals its actions on a [SwipeRevealLayout]:
- * GPS sync on the models DJI's R-SDK supports, Delete on a saved camera. A row with neither doesn't
- * swipe. At most one row is open at a time. Rows are diffed by MAC, so the scan's frequent rebuilds
- * leave an open or mid-drag row alone instead of re-inflating it.
+ * an RTMP livestream on a camera in range, GPS sync on the models DJI's R-SDK supports, Delete on a
+ * saved camera. A row with none of them doesn't swipe. At most one row is open at a time. Rows are
+ * diffed by MAC, so the scan's frequent rebuilds leave an open or mid-drag row alone instead of
+ * re-inflating it.
  */
 class CameraListAdapter(private val actions: Actions) : RecyclerView.Adapter<CameraListAdapter.Holder>() {
 
     interface Actions {
         fun onTap(r: CamRow)
+        fun onLivestream(r: CamRow)
         fun onGpsSync(r: CamRow)
         fun onDelete(r: CamRow)
     }
@@ -49,10 +51,12 @@ class CameraListAdapter(private val actions: Actions) : RecyclerView.Adapter<Cam
         val name: TextView = v.findViewById(R.id.camName)
         val tag: TextView = v.findViewById(R.id.camTag)
         val status: ImageView = v.findViewById(R.id.camStatus)
+        val live: View = v.findViewById(R.id.actionLive)
         val gps: View = v.findViewById(R.id.actionGps)
         val delete: View = v.findViewById(R.id.actionDelete)
         var row: CamRow? = null
         // The card's TalkBack actions, mirroring whichever tiles the row shows; 0 = not added.
+        var liveAction = 0
         var gpsAction = 0
         var deleteAction = 0
     }
@@ -109,6 +113,11 @@ class CameraListAdapter(private val actions: Actions) : RecyclerView.Adapter<Cam
             // With another row open, a tap elsewhere only closes it, like tapping outside a menu.
             if (openMac != null) closeOpen() else actions.onTap(r)
         }
+        h.live.setOnClickListener {
+            val r = h.row ?: return@setOnClickListener
+            h.swipe.close()
+            actions.onLivestream(r)
+        }
         h.gps.setOnClickListener {
             val r = h.row ?: return@setOnClickListener
             h.swipe.close()
@@ -152,11 +161,15 @@ class CameraListAdapter(private val actions: Actions) : RecyclerView.Adapter<Cam
         val dim = if (r.inRange) 1f else 0.5f
         h.text.alpha = dim
         h.status.alpha = dim
-        // GPS sync only where the R-SDK supports the model (never an Xtra); Delete only for a saved
-        // camera, since an unsaved one has nothing to delete.
+        // A livestream needs the camera in range (it pairs and joins the stream's network itself); GPS
+        // sync only where the R-SDK supports the model (never an Xtra); Delete only for a saved camera,
+        // since an unsaved one has nothing to delete.
+        val canStream = r.device != null
+        h.live.visibility = if (canStream) View.VISIBLE else View.GONE
         h.gps.visibility = if (r.model.gpsSync) View.VISIBLE else View.GONE
         h.delete.visibility = if (r.saved) View.VISIBLE else View.GONE
         // TalkBack can't drag the card, so the same actions sit on the card itself.
+        h.liveAction = syncAction(h, h.liveAction, canStream, R.string.rtmp_start, actions::onLivestream)
         h.gpsAction = syncAction(h, h.gpsAction, r.model.gpsSync, R.string.gps_sync, actions::onGpsSync)
         h.deleteAction = syncAction(h, h.deleteAction, r.saved, R.string.delete, actions::onDelete)
         h.swipe.swipeEnabled = !locked

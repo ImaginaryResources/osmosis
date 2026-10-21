@@ -330,6 +330,7 @@ class MainActivity : AppCompatActivity(), OsmoScanner.Listener, GattClient.Liste
         findViewById<View>(R.id.btnRescan).setOnClickListener { startCameraScan(select = true) }
         cameraAdapter = CameraListAdapter(object : CameraListAdapter.Actions {
             override fun onTap(r: CamRow) = onCamRowClick(r)
+            override fun onLivestream(r: CamRow) = onCamRowLivestream(r)
             override fun onGpsSync(r: CamRow) = onCamRowGps(r)
             override fun onDelete(r: CamRow) = onCamRowDelete(r)
         })
@@ -664,6 +665,19 @@ class MainActivity : AppCompatActivity(), OsmoScanner.Listener, GattClient.Liste
         else Toast.makeText(this, getString(R.string.camera_not_in_range, r.name ?: r.mac), Toast.LENGTH_SHORT).show()
     }
 
+    /** Swipe menu → Stream: the RTMP form. The stream takes the same BLE link a GPS-sync session holds. */
+    private fun onCamRowLivestream(r: CamRow) {
+        if (GpsSyncState.locked) {
+            toast(getString(R.string.gps_active_select_blocked))
+            return
+        }
+        if (r.device == null) {
+            Toast.makeText(this, getString(R.string.camera_not_in_range, r.name ?: r.mac), Toast.LENGTH_SHORT).show()
+            return
+        }
+        promptRtmp(r)
+    }
+
     /** Swipe menu → GPS sync: connect over R-SDK (BLE only, no WiFi) via the foreground service. */
     private fun onCamRowGps(r: CamRow) {
         if (!r.model.gpsSync) return   // the row only offers it on R-SDK models; belt and braces
@@ -779,7 +793,7 @@ class MainActivity : AppCompatActivity(), OsmoScanner.Listener, GattClient.Liste
      * reads them back, so the bar can restart the same stream later without the dialog.
      */
     private fun promptRtmp(r: CamRow) {
-        // Non-null by construction: the long-press menu only offers this for a row with a live device.
+        // Non-null by construction: the swipe menu only offers this for a row with a live device.
         val dev = r.device ?: return
         val prefs = getSharedPreferences("osmosis", MODE_PRIVATE)
         val view = layoutInflater.inflate(R.layout.dialog_rtmp, null)
