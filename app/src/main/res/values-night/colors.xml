@@ -17,4 +17,7 @@
     <!-- Pill semantic indicators, brightened for dark. -->
     <color name="osmo_warn">#EFB84E</color>
     <color name="osmo_low">#EF6A5E</color>
+
+    <!-- The pill behind a swiped camera row: darker than the card, so it still reads as recessed. -->
+    <color name="osmo_swipe_well">#0B0B0B</color>
 </resources>
