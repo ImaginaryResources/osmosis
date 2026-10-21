@@ -25,9 +25,16 @@ data class CameraModel(
     // power-button press, and their media API is NOT the camera datalink (see DroneSession, and
     // MEDIA_PROTOCOL.md § "DJI Drone QuickTransfer media offload").
     val isDrone: Boolean = false,
+    // The camera's device id in DJI's R-SDK, the Osmo GPS Controller protocol GpsService speaks. Only
+    // the models that SDK supports have one (https://github.com/dji-sdk/Osmo-GPS-Controller-Demo);
+    // null means no GPS sync, and the camera row's swipe menu leaves the GPS tile out.
+    val rsdkDeviceId: Int? = null,
 ) {
     /** The SetPairingPIN token this device expects: a drone only releases WiFi creds to "DJI FLY". */
     val pairingToken: String get() = if (isDrone) "DJI FLY" else "osmo"
+
+    /** GPS sync over the R-SDK works on this model (see [rsdkDeviceId]). */
+    val gpsSync: Boolean get() = rsdkDeviceId != null
 
     /**
      * The other datalink config to try when [datalinkPort] never answers: the whole line is either
@@ -50,14 +57,14 @@ data class CameraModel(
             // Thanks to Ave for sending over the golden test files. All verified against the actual hardware.
             // Everything seems to work as expected.
             // PR: https://github.com/KonradIT/osmosis/pull/37
-            0x0014 to CameraModel("Osmo Action 4", verified = true),
+            0x0014 to CameraModel("Osmo Action 4", verified = true, rsdkDeviceId = 0xFF33),
             // Genuine Action 5 Pro on 9004 — tester-confirmed (grid + download). The Xtra rebrand
             // gets flipped to 10004 by resolve(); see the Xtra note below.
-            0x0015 to CameraModel("Osmo Action 5 Pro", verified = true),
+            0x0015 to CameraModel("Osmo Action 5 Pro", verified = true, rsdkDeviceId = 0xFF44),
             // 360 stays unverified: only ever scanned, never a successful offload — and its files are
             // 360-format (need Mimo to view), so it's parked regardless of transport.
-            0x0017 to CameraModel("Osmo 360", wpa3 = true),
-            0x0018 to CameraModel("Osmo Action 6", verified = true),
+            0x0017 to CameraModel("Osmo 360", wpa3 = true, rsdkDeviceId = 0xFF66),
+            0x0018 to CameraModel("Osmo Action 6", verified = true, rsdkDeviceId = 0xFF55),
             ID_OSMO_NANO to CameraModel("Osmo Nano", verified = true),
             // It DOES broadcast mfr data. This said otherwise, copied from the reverse-engineered
             // Pocket 3 BLE library in reference/, which states it in four places. Our own captures say
@@ -123,9 +130,10 @@ data class CameraModel(
             val base = byIdOrName(modelId, name)
             if (brand != Brand.XTRA) return base
             val isEdgePro = modelId == 0x0015 || base.name.contains("Action 5")
+            // No Xtra is an R-SDK device, even where its DJI twin is: the rebadges get no GPS sync.
             return base.copy(
                 name = XTRA_NAMES[modelId] ?: if (isEdgePro) "Xtra Edge Pro" else "Xtra ${base.name}",
-                datalinkPort = 10004, tcpPoke = false, verified = isEdgePro,
+                datalinkPort = 10004, tcpPoke = false, verified = isEdgePro, rsdkDeviceId = null,
             )
         }
 

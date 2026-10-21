@@ -1,10 +1,57 @@
 <?xml version="1.0" encoding="utf-8"?>
-<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+<!-- One camera row. The card sits on top; behind it is the darkened pill holding the swipe actions
+     (GPS sync on R-SDK models, Delete on a saved camera; the adapter hides what doesn't apply),
+     uncovered when the card is dragged left. Children are positional: the tray first, the card
+     second (see SwipeRevealLayout). -->
+<dev.konraditurbe.osmosis.ui.SwipeRevealLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
+    android:clipChildren="false"
     android:paddingVertical="5dp">
 
     <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:background="@drawable/swipe_well_bg"
+        android:gravity="end"
+        android:orientation="horizontal"
+        android:padding="8dp"
+        android:visibility="invisible">
+
+        <LinearLayout
+            android:id="@+id/actionGps"
+            style="@style/SwipeAction"
+            android:background="@drawable/swipe_action_gps_bg">
+
+            <ImageView
+                style="@style/SwipeActionIcon"
+                android:importantForAccessibility="no"
+                android:src="@drawable/ic_satellite" />
+
+            <TextView
+                style="@style/SwipeActionLabel"
+                android:text="@string/gps_sync" />
+        </LinearLayout>
+
+        <LinearLayout
+            android:id="@+id/actionDelete"
+            style="@style/SwipeAction"
+            android:layout_marginStart="8dp"
+            android:background="@drawable/swipe_action_delete_bg">
+
+            <ImageView
+                style="@style/SwipeActionIcon"
+                android:importantForAccessibility="no"
+                android:src="@drawable/ic_trash" />
+
+            <TextView
+                style="@style/SwipeActionLabel"
+                android:text="@string/delete" />
+        </LinearLayout>
+    </LinearLayout>
+
+    <LinearLayout
+        android:id="@+id/camCard"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:background="@drawable/camera_row_bg"
@@ -16,6 +63,7 @@
         android:paddingVertical="12dp">
 
         <LinearLayout
+            android:id="@+id/camText"
             android:layout_width="0dp"
             android:layout_height="wrap_content"
             android:layout_weight="1"
@@ -59,4 +107,4 @@
             android:contentDescription="@string/cd_camera_status"
             android:tint="@color/osmo_ink" />
     </LinearLayout>
-</FrameLayout>
+</dev.konraditurbe.osmosis.ui.SwipeRevealLayout>

@@ -1,0 +1,10 @@
+<!-- A satellite (body, two solar panels on struts, a dish), drawn upright and turned 45°. -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="24dp" android:height="24dp" android:viewportWidth="24" android:viewportHeight="24"
+    android:tint="?attr/colorControlNormal">
+    <group android:rotation="45" android:pivotX="12" android:pivotY="12">
+        <path android:fillColor="#00000000" android:strokeColor="#FFFFFF" android:strokeWidth="1.7"
+            android:strokeLineJoin="round" android:strokeLineCap="round"
+            android:pathData="M10.5,8.5 h3 a1,1 0 0,1 1,1 v5 a1,1 0 0,1 -1,1 h-3 a1,1 0 0,1 -1,-1 v-5 a1,1 0 0,1 1,-1z M3.1,9.2 h2.9 a0.8,0.8 0 0,1 0.8,0.8 v4 a0.8,0.8 0 0,1 -0.8,0.8 h-2.9 a0.8,0.8 0 0,1 -0.8,-0.8 v-4 a0.8,0.8 0 0,1 0.8,-0.8z M18,9.2 h2.9 a0.8,0.8 0 0,1 0.8,0.8 v4 a0.8,0.8 0 0,1 -0.8,0.8 h-2.9 a0.8,0.8 0 0,1 -0.8,-0.8 v-4 a0.8,0.8 0 0,1 0.8,-0.8z M6.8,12 h2.7 M14.5,12 h2.7 M12,15.5 v1.7 M9.6,19.6 a2.4,2.4 0 0,1 4.8,0" />
+    </group>
+</vector>

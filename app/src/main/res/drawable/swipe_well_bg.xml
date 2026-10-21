@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- The darkened pill behind a camera row's card: the same shape as [camera_row_bg], uncovered as the
+     card slides left, with the swipe actions inside it. -->
+<shape xmlns:android="http://schemas.android.com/apk/res/android" android:shape="rectangle">
+    <solid android:color="@color/osmo_swipe_well" />
+    <corners android:radius="20dp" />
+</shape>
