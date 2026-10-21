@@ -80,8 +80,8 @@ class RtmpStreamer(
         pendingSettings = settings
         gc.connect(device)
         main.postDelayed(keepalive, KEEPALIVE_MS)
-        // connectGatt can fail without ever calling back, which used to leave the bar's Start button
-        // disabled until the app was killed — there is no other timer on the way to onReady.
+        // connectGatt can fail without ever calling back, which used to leave the stream stuck starting
+        // until the app was killed — there is no other timer on the way to onReady.
         main.postDelayed(readyGuard, READY_TIMEOUT_MS)
     }
 
@@ -94,7 +94,7 @@ class RtmpStreamer(
 
     /** Stop the stream and release the link. Safe to call when nothing is running. */
     fun stop() {
-        if (closed) return // already ended; a second report would only repaint the bar
+        if (closed) return // already ended; a second report would only repaint the banner
         if (isStreaming) {
             listener.onLog("RTMP: sending stop")
             gatt?.writeCommand(OsmoCommands.stopStream())

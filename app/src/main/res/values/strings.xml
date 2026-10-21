@@ -96,10 +96,14 @@
     <string name="rtmp_need_url">Enter an RTMP URL first</string>
     <string name="rtmp_need_ssid">Enter the Wi-Fi network name (SSID)</string>
     <string name="rtmp_starting">Connecting to %1$s…</string>
-    <string name="rtmp_idle">Not streaming.</string>
-    <string name="rtmp_bar_streaming">Streaming to %1$s</string>
-    <string name="rtmp_bar_battery">camera battery %1$d%%</string>
-    <string name="rtmp_stop_first">Stop the livestream first</string>
+    <!-- The lockout banner, as for GPS sync: %2$s is the stream's current step, then its host. -->
+    <string name="rtmp_connecting_banner">Livestream starting on %1$s: %2$s\nTap this banner to cancel.</string>
+    <string name="rtmp_live_banner">Live from %1$s to %2$s\nMedia browsing is disabled while streaming. Tap this banner to stop.</string>
+    <string name="rtmp_battery">Camera battery %1$d%%</string>
+    <string name="rtmp_stop_first">A livestream is running — tap the banner to stop it before selecting a camera.</string>
+    <string name="rtmp_stop_for_gps_title">Stop the livestream?</string>
+    <string name="rtmp_stop_for_gps_message">GPS sync needs the camera\'s Bluetooth link, which the livestream is using. Starting GPS sync ends the stream.</string>
+    <string name="live_tag">LIVE</string>
     <string name="download">Download</string>
     <string name="download_count">Download (%1$d)</string>
     <string name="download_running">Downloading…</string>

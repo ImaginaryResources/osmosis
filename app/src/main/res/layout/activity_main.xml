@@ -16,10 +16,11 @@
         android:orientation="vertical"
         android:padding="14dp">
 
-        <!-- GPS-sync lockout banner: shown while the R-SDK link owns the camera's BLE, so media
-             browsing (which needs the same link for WiFi handoff) is disabled. Tap it to stop. -->
+        <!-- Lockout banner: shown while a GPS-sync (R-SDK) link or an RTMP livestream owns the camera's
+             BLE, so media browsing (which needs the same link for WiFi handoff) is disabled. Amber while
+             connecting, red once live. Tap it to stop. -->
         <TextView
-            android:id="@+id/gpsBanner"
+            android:id="@+id/lockBanner"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:layout_marginBottom="10dp"
@@ -73,56 +74,6 @@
             android:paddingBottom="6dp"
             android:textColor="@color/osmo_muted"
             android:textSize="12sp" />
-
-        <!-- RTMP control surface. The dialog is only the settings form; once a stream is configured
-             this bar is where it is seen and started/stopped, so dismissing the dialog loses nothing.
-             Camera list only — the media grid is not where an RTMP session lives. -->
-        <LinearLayout
-            android:id="@+id/rtmpBar"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginBottom="8dp"
-            android:background="@drawable/camera_row_bg"
-            android:gravity="center_vertical"
-            android:orientation="horizontal"
-            android:paddingHorizontal="14dp"
-            android:paddingVertical="8dp"
-            android:visibility="gone">
-
-            <LinearLayout
-                android:layout_width="0dp"
-                android:layout_height="wrap_content"
-                android:layout_weight="1"
-                android:orientation="vertical">
-
-                <TextView
-                    android:id="@+id/rtmpBarText"
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:textColor="@color/osmo_ink"
-                    android:textSize="13sp"
-                    android:textStyle="bold" />
-
-                <TextView
-                    android:id="@+id/rtmpBarBattery"
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:textColor="@color/osmo_muted"
-                    android:textSize="11sp" />
-            </LinearLayout>
-
-            <com.google.android.material.button.MaterialButton
-                android:id="@+id/btnRtmpStartStop"
-                style="@style/Widget.Material3.Button.TonalButton"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:insetTop="0dp"
-                android:insetBottom="0dp"
-                android:minWidth="0dp"
-                android:text="@string/rtmp_start_button"
-                android:textSize="13sp"
-                app:cornerRadius="20dp" />
-        </LinearLayout>
 
         <!-- Connection progress: invisible by default, space reserved so the camera list doesn't jump
              when it appears (same idea as the grid's progressArea, one bar tall). -->

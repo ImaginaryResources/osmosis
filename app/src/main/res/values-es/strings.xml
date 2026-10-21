@@ -95,10 +95,13 @@
     <string name="rtmp_need_url">Introduce primero una URL RTMP</string>
     <string name="rtmp_need_ssid">Introduce el nombre de la red Wi-Fi (SSID)</string>
     <string name="rtmp_starting">Conectando con %1$s…</string>
-    <string name="rtmp_idle">Sin emisión.</string>
-    <string name="rtmp_bar_streaming">Emitiendo a %1$s</string>
-    <string name="rtmp_bar_battery">batería de la cámara %1$d%%</string>
-    <string name="rtmp_stop_first">Detén primero la emisión</string>
+    <string name="rtmp_connecting_banner">Iniciando la emisión en %1$s: %2$s\nHaz click en este aviso para cancelar.</string>
+    <string name="rtmp_live_banner">En directo desde %1$s a %2$s\nLa exploración de contenido está desactivada durante la emisión. Haz click en este aviso para detener.</string>
+    <string name="rtmp_battery">Batería de la cámara %1$d%%</string>
+    <string name="rtmp_stop_first">Hay una emisión en curso: haz click en el aviso para detenerla antes de seleccionar una cámara.</string>
+    <string name="rtmp_stop_for_gps_title">¿Detener la emisión?</string>
+    <string name="rtmp_stop_for_gps_message">La sincronización GPS necesita la conexión Bluetooth de la cámara, que ahora usa la emisión. Al iniciar la sincronización GPS, la emisión termina.</string>
+    <string name="live_tag">EN VIVO</string>
     <string name="download">Descargar</string>
     <string name="download_count">Descargar (%1$d)</string>
     <string name="download_running">Descargando…</string>
